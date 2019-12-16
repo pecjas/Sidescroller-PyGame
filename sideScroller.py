@@ -1,6 +1,7 @@
 import pygame
 import sys
 import os
+import random
 
 os.chdir("C:/Users/pecja/Development/Python/PyGame")
 
@@ -16,17 +17,41 @@ directions = {
     1: 'Up',
     2: 'Down' }
 
+class GameSettings:
+    height = 300
+    width = 400
+
+    hoverLimit = 5
+    maxSpeed = 4
+    minSpeed = 1
+    speedIncrementCount = 10
+
+    obstacleFrequency = 50
+    obstacleSpeed = 3
+
+
+class Obstacle:
+    image = pygame.image.load("SideScroller/img/obstacles/obstacle.png")
+    width = image.get_width()
+    height = image.get_height()
+    yBottomBarrier = GameSettings.height - height
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
 class SpeedCounter:
     def __init__(self, direction):
         self.count = 0
         self.direction = directions.get(direction)
 
 class Player:
-    up = pygame.image.load("SideScroller/img/up_state.png")
-    neutral = pygame.image.load("SideScroller/img/neutral_state.png")
-    down = pygame.image.load("SideScroller/img/down_state.png")
+    up = pygame.image.load("SideScroller/img/player/up_state.png")
+    neutral = pygame.image.load("SideScroller/img/player/neutral_state.png")
+    down = pygame.image.load("SideScroller/img/player/down_state.png")
     width = max(up.get_width(), neutral.get_width(), down.get_width())
     height = max(up.get_height(), neutral.get_height(), down.get_height())
+    yBottomBarrier = GameSettings.height - height
 
     def __init__(self, x=0, y=0):
         self.x = x
@@ -43,8 +68,8 @@ class Player:
             and start the count over.
         """
         if self.speedCounter.direction != directions.get(direction):
-            player.reset_speed()
-            player.speedCounter = SpeedCounter(direction)
+            self.reset_speed()
+            self.speedCounter = SpeedCounter(direction)
         if self.currentSpeed == GameSettings.maxSpeed:
             return
         self.speedCounter.count += 1
@@ -52,8 +77,8 @@ class Player:
             self.currentSpeed += 1
     
     def increase_y_axis(self, val):
-        if self.y + val > GameSettings.yBottomBarrier:
-            self.y = GameSettings.yBottomBarrier
+        if self.y + val > self.yBottomBarrier:
+            self.y = self.yBottomBarrier
         else:
             self.y += val
     
@@ -62,16 +87,6 @@ class Player:
             self.y = self.height
         else:
             self.y -= val
-
-
-class GameSettings:
-    height = 300
-    width = 400
-    hoverLimit = 5
-    maxSpeed = 4
-    minSpeed = 1
-    speedIncrementCount = 10
-    yBottomBarrier = height - Player.height
 
 def up_key_state(screen, player:Player):
     """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
@@ -83,7 +98,7 @@ def up_key_state(screen, player:Player):
 
 def down_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when the down arrow is pressed. Returns updated neutralCount """
-    if player.y < GameSettings.yBottomBarrier:
+    if player.y < Player.yBottomBarrier:
         screen.blit(player.down, (player.x, player.y))
         player.increase_y_axis(1 * player.currentSpeed)
     else:
@@ -103,38 +118,52 @@ def neutral_key_state(screen, player:Player, neutralCount:int):
         player.increase_y_axis(1 * player.currentSpeed)
     return neutralCount + 1
 
-pygame.init()
-screen = pygame.display.set_mode((GameSettings.width, GameSettings.height))
-pygame.display.set_caption("Jason's Game")
+def move_obstacles(screen, obstacles:list):
+    for obstacle in obstacles:
+        screen.blit(obstacle.image, (obstacle.x, obstacle.y))
+        obstacle.x -= 1 * GameSettings.obstacleSpeed
 
-player = Player(0, GameSettings.yBottomBarrier)
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((GameSettings.width, GameSettings.height))
+    pygame.display.set_caption("Jason's Game")
 
-fps = 30
-fpsClock = pygame.time.Clock()
+    player = Player(0, Player.yBottomBarrier)
 
-endState = False
+    fps = 30
+    fpsClock = pygame.time.Clock()
 
-neutralCount = 0
+    endState = False
 
-while not endState:
-    keys = pygame.key.get_pressed()
-    screen.fill(white)
+    neutralCount = 0
+    loopCount = 0
+    obstacles = []
 
-    if keys[pygame.K_UP]:
-        neutralCount = up_key_state(screen, player)
-    elif keys[pygame.K_DOWN] or (neutralCount > GameSettings.hoverLimit):
-        neutralCount = down_key_state(screen, player, neutralCount)
-    else:
-        neutralCount = neutral_key_state(screen, player, neutralCount)
+    while not endState:
+        loopCount += 1
+        keys = pygame.key.get_pressed()
+        screen.fill(white)
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.display.quit()
-            pygame.quit()
-            sys.exit()
-        #DEBUG
-        #print(event)
-        #ENDDEBUG
-    pygame.display.update()
-    print(neutralCount)
-    fpsClock.tick(fps)
+        if keys[pygame.K_UP]:
+            neutralCount = up_key_state(screen, player)
+        elif keys[pygame.K_DOWN] or (neutralCount > GameSettings.hoverLimit):
+            neutralCount = down_key_state(screen, player, neutralCount)
+        else:
+            neutralCount = neutral_key_state(screen, player, neutralCount)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.display.quit()
+                pygame.quit()
+                sys.exit()
+
+        if loopCount == GameSettings.obstacleFrequency:
+            obstacles.append(Obstacle(GameSettings.width + 50, random.randrange(0, Obstacle.yBottomBarrier)))
+            loopCount = 0
+        move_obstacles(screen, obstacles)
+        pygame.display.update()
+        print(neutralCount)
+        fpsClock.tick(fps)
+
+if __name__ == "__main__":
+    main()
