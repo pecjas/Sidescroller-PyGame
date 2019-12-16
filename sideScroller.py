@@ -39,7 +39,7 @@ class GameSettings:
     width = 400
 
     hoverLimit = 5
-    maxSpeed = 4
+    maxSpeed = 6
     minSpeed = 1
     speedIncrementCount = 10
 
@@ -47,6 +47,11 @@ class GameSettings:
     obstacleSpeed = 3
 
     levelTick = 200
+    frequencyTick = 1000
+
+    def __init__(self):
+        self.obstacleFrequency = GameSettings.obstacleFrequency
+        self.obstacleSpeed = GameSettings.obstacleSpeed
 
 class Obstacle(pygame.sprite.Sprite):
     images = [pygame.image.load("SideScroller/img/obstacles/obstacle.png"),
@@ -92,6 +97,7 @@ class Player(pygame.sprite.Sprite):
         self.speedCounter = SpeedCounter(1)
 
         self.score = Score()
+        self.game = GameSettings()
 
     def reset_speed(self):
         self.speedCounter.count = 0
@@ -162,24 +168,40 @@ def move_obstacles(screen, obstacles:list, player:Player):
     removedObstacles = []
     for obstacle in obstacles:
         screen.blit(obstacle.image, (obstacle.x, obstacle.y))
-        obstacle.x -= 1 * player.score.level
-        obstacle.rect.move_ip(-(1 * player.score.level), 0)
+        xShift = player.game.obstacleSpeed + (1 * player.score.level)
+        obstacle.x -= xShift
+        obstacle.rect.move_ip(-(xShift), 0)
         if obstacle.x < -obstacle.width:
             removedObstacles.append(obstacle)
     for obstacle in removedObstacles:
         obstacles.remove(obstacle)
 
-def loss_screen(screen):
+def loss_screen(screen, player:Player):
     screen.fill(white)
-    font = pygame.font.SysFont("Ariel", 40)
-    text = font.render("Game Over", True, black)
-    screen.blit(text, text.get_rect())
+    highScoreFont = pygame.font.SysFont("Ariel", 20)
+    highScoreText = highScoreFont.render(f"Level: {player.score.level}    Score: {player.score.score}", True, black)
+    screen.blit(highScoreText, highScoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2))))
+
+    lossFont = pygame.font.SysFont("Ariel", 40)
+    lossText = lossFont.render("Game Over", True, black)
+    screen.blit(lossText, lossText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2 - highScoreText.get_height()))))
     pygame.display.update()
 
 def score_HUD(screen, player:Player):
     font = pygame.font.SysFont("Ariel", 20)
     text = font.render(f"Level: {player.score.level}    Score: {player.score.score}", True, black)
     screen.blit(text, text.get_rect())
+
+def tick_adjustments(player:Player, obstacles:list):
+    """ Updates to score and game based on current tick. """
+    if player.score.score % player.game.obstacleFrequency == 0:
+        obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50), 
+                        random.randrange(0, GameSettings.height)))
+    if player.score.score % GameSettings.levelTick == 0:
+        player.score.level += 1
+    if player.score.score % GameSettings.frequencyTick == 0:
+        newFrequency = int(player.game.obstacleFrequency/2)
+        player.game.obstacleFrequency = newFrequency
 
 def main():
     pygame.init()
@@ -198,9 +220,9 @@ def main():
 
     while not endState:
         player.score.score += 1
-        keys = pygame.key.get_pressed()
         screen.fill(white)
 
+        keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:
             neutralCount = up_key_state(screen, player)
         elif keys[pygame.K_DOWN] or (neutralCount > GameSettings.hoverLimit):
@@ -214,17 +236,13 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-        if player.score.score % GameSettings.obstacleFrequency == 0:
-            obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50), 
-                            random.randrange(0, GameSettings.height)))
-        if player.score.score % GameSettings.levelTick == 0:
-            player.score.level += 1
-        print(player.rect)
+        tick_adjustments(player, obstacles)
+
         move_obstacles(screen, obstacles, player)
         score_HUD(screen, player)
         pygame.display.update()
         if len(pygame.sprite.spritecollide(player, obstacles, False)) > 0:
-            loss_screen(screen)
+            loss_screen(screen, player)
             endState = True
         fpsClock.tick(fps)
 
