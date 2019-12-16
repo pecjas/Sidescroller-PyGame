@@ -17,6 +17,23 @@ directions = {
     1: 'Up',
     2: 'Down' }
 
+class Score:
+    highScore = 0
+    highLevel = 0
+
+    def __init__(self):
+        self.score = 0
+        self.level = 1
+    
+    def reset_score(self):
+        """ Reset score and update high score/level if needed. """
+        if self.score > Score.highScore:
+            Score.highScore = self.score
+        if self.level > Score.highLevel:
+            Score.highLevel = self.level
+        self.score = 0
+        self.level = 1
+
 class GameSettings:
     height = 300
     width = 400
@@ -29,16 +46,29 @@ class GameSettings:
     obstacleFrequency = 50
     obstacleSpeed = 3
 
+    levelTick = 200
+
 class Obstacle(pygame.sprite.Sprite):
+    images = [pygame.image.load("SideScroller/img/obstacles/obstacle.png"),
+    pygame.image.load("SideScroller/img/obstacles/obstacle2.png"),
+    pygame.image.load("SideScroller/img/obstacles/obstacle3.png")]
     image = pygame.image.load("SideScroller/img/obstacles/obstacle.png")
+
     width = image.get_width()
     height = image.get_height()
-    yBottomBarrier = GameSettings.height - height
 
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.rect = pygame.Rect(x, y, Obstacle.width, Obstacle.height)
+        self.image = Obstacle.images[random.randrange(0, len(Obstacle.images))]
+        width = self.image.get_width()
+        height = self.image.get_height()
+
+        self.yBottomBarrier = GameSettings.height - height
+        self.x = x + width
+        if y > self.yBottomBarrier:
+            self.y = self.yBottomBarrier
+        else:
+            self.y = y
+        self.rect = pygame.Rect(x + width, y, width, height)
 
 class SpeedCounter:
     def __init__(self, direction):
@@ -60,6 +90,8 @@ class Player(pygame.sprite.Sprite):
 
         self.currentSpeed = 1
         self.speedCounter = SpeedCounter(1)
+
+        self.score = Score()
 
     def reset_speed(self):
         self.speedCounter.count = 0
@@ -88,8 +120,8 @@ class Player(pygame.sprite.Sprite):
         self.rect.move_ip(0, yAdjust)
     
     def decrease_y_axis(self, val):
-        if self.y - val < self.height:
-            yAdjust = self.y - self.height
+        if self.y - val < 0:
+            yAdjust = self.y
             self.y = self.height
         else:
             yAdjust = val
@@ -99,7 +131,7 @@ class Player(pygame.sprite.Sprite):
 def up_key_state(screen, player:Player):
     """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
     screen.blit(player.up, (player.x, player.y))
-    if player.y != Player.height:
+    if player.y != 0:
         player.decrease_y_axis(1 * player.currentSpeed)
         player.increase_speed_counter(1)
     return 0
@@ -126,11 +158,16 @@ def neutral_key_state(screen, player:Player, neutralCount:int):
         player.increase_y_axis(1 * player.currentSpeed)
     return neutralCount + 1
 
-def move_obstacles(screen, obstacles:list):
+def move_obstacles(screen, obstacles:list, player:Player):
+    removedObstacles = []
     for obstacle in obstacles:
         screen.blit(obstacle.image, (obstacle.x, obstacle.y))
-        obstacle.x -= 1 * GameSettings.obstacleSpeed
-        obstacle.rect.move_ip(-(1 * GameSettings.obstacleSpeed), 0)
+        obstacle.x -= 1 * player.score.level
+        obstacle.rect.move_ip(-(1 * player.score.level), 0)
+        if obstacle.x < -obstacle.width:
+            removedObstacles.append(obstacle)
+    for obstacle in removedObstacles:
+        obstacles.remove(obstacle)
 
 def loss_screen(screen):
     screen.fill(white)
@@ -138,6 +175,11 @@ def loss_screen(screen):
     text = font.render("Game Over", True, black)
     screen.blit(text, text.get_rect())
     pygame.display.update()
+
+def score_HUD(screen, player:Player):
+    font = pygame.font.SysFont("Ariel", 20)
+    text = font.render(f"Level: {player.score.level}    Score: {player.score.score}", True, black)
+    screen.blit(text, text.get_rect())
 
 def main():
     pygame.init()
@@ -152,11 +194,10 @@ def main():
     endState = False
 
     neutralCount = 0
-    loopCount = 0
     obstacles = []
 
     while not endState:
-        loopCount += 1
+        player.score.score += 1
         keys = pygame.key.get_pressed()
         screen.fill(white)
 
@@ -173,16 +214,19 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-        if loopCount == GameSettings.obstacleFrequency:
-            obstacles.append(Obstacle(GameSettings.width + 50, random.randrange(0, Obstacle.yBottomBarrier)))
-            loopCount = 0
-        move_obstacles(screen, obstacles)
+        if player.score.score % GameSettings.obstacleFrequency == 0:
+            obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50), 
+                            random.randrange(0, GameSettings.height)))
+        if player.score.score % GameSettings.levelTick == 0:
+            player.score.level += 1
+        print(player.rect)
+        move_obstacles(screen, obstacles, player)
+        score_HUD(screen, player)
         pygame.display.update()
         if len(pygame.sprite.spritecollide(player, obstacles, False)) > 0:
+            loss_screen(screen)
             endState = True
         fpsClock.tick(fps)
-
-    loss_screen(screen)
 
 if __name__ == "__main__":
     main()
