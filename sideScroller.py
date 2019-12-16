@@ -29,8 +29,7 @@ class GameSettings:
     obstacleFrequency = 50
     obstacleSpeed = 3
 
-
-class Obstacle:
+class Obstacle(pygame.sprite.Sprite):
     image = pygame.image.load("SideScroller/img/obstacles/obstacle.png")
     width = image.get_width()
     height = image.get_height()
@@ -39,13 +38,14 @@ class Obstacle:
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.rect = pygame.Rect(x, y, Obstacle.width, Obstacle.height)
 
 class SpeedCounter:
     def __init__(self, direction):
         self.count = 0
         self.direction = directions.get(direction)
 
-class Player:
+class Player(pygame.sprite.Sprite):
     up = pygame.image.load("SideScroller/img/player/up_state.png")
     neutral = pygame.image.load("SideScroller/img/player/neutral_state.png")
     down = pygame.image.load("SideScroller/img/player/down_state.png")
@@ -56,6 +56,8 @@ class Player:
     def __init__(self, x=0, y=0):
         self.x = x
         self.y = y
+        self.rect = pygame.Rect(x, y, Player.width, Player.height)
+
         self.currentSpeed = 1
         self.speedCounter = SpeedCounter(1)
 
@@ -75,18 +77,24 @@ class Player:
         self.speedCounter.count += 1
         if self.speedCounter.count % GameSettings.speedIncrementCount == 0:
             self.currentSpeed += 1
-    
+
     def increase_y_axis(self, val):
         if self.y + val > self.yBottomBarrier:
+            yAdjust = self.yBottomBarrier - self.y
             self.y = self.yBottomBarrier
         else:
+            yAdjust = val
             self.y += val
+        self.rect.move_ip(0, yAdjust)
     
     def decrease_y_axis(self, val):
         if self.y - val < self.height:
+            yAdjust = self.y - self.height
             self.y = self.height
         else:
+            yAdjust = val
             self.y -= val
+        self.rect.move_ip(0, -yAdjust)
 
 def up_key_state(screen, player:Player):
     """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
@@ -122,6 +130,14 @@ def move_obstacles(screen, obstacles:list):
     for obstacle in obstacles:
         screen.blit(obstacle.image, (obstacle.x, obstacle.y))
         obstacle.x -= 1 * GameSettings.obstacleSpeed
+        obstacle.rect.move_ip(-(1 * GameSettings.obstacleSpeed), 0)
+
+def loss_screen(screen):
+    screen.fill(white)
+    font = pygame.font.SysFont("Ariel", 40)
+    text = font.render("Game Over", True, black)
+    screen.blit(text, text.get_rect())
+    pygame.display.update()
 
 def main():
     pygame.init()
@@ -162,8 +178,11 @@ def main():
             loopCount = 0
         move_obstacles(screen, obstacles)
         pygame.display.update()
-        print(neutralCount)
+        if len(pygame.sprite.spritecollide(player, obstacles, False)) > 0:
+            endState = True
         fpsClock.tick(fps)
+
+    loss_screen(screen)
 
 if __name__ == "__main__":
     main()
