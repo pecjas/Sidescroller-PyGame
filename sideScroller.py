@@ -17,6 +17,7 @@ blue = (0, 0, 255)
 #endregion
 
 directions = {
+    0: 'Neutral',
     1: 'Up',
     2: 'Down' }
 
@@ -34,7 +35,6 @@ def load_highscore():
 
 class Score:
     highScore = 0
-    highLevel = 0
 
     def __init__(self):
         self.score = 0
@@ -44,8 +44,6 @@ class Score:
         """ Reset score and update high score/level if needed. """
         if self.score > Score.highScore:
             Score.highScore = self.score
-        if self.level > Score.highLevel:
-            Score.highLevel = self.level
         self.score = 0
         self.level = 1
     def set_highscore(self, score:dict, save:bool=False):
@@ -53,11 +51,8 @@ class Score:
         if len(score) == 0:
             return False
         updated = False
-        if score.get('score') > self.highScore:
-            self.highScore = score.get('score')
-            updated = True
-        if score.get('level') > self.highLevel:
-            self.highLevel = score.get('level')
+        if score.get('score') > Score.highScore:
+            Score.highScore = score.get('score')
             updated = True
         if updated is True and save is True:
             try:
@@ -75,9 +70,10 @@ class Background(pygame.sprite.Sprite):
         self.rect.top = 0
 
 class GameSettings:
-    height = 300
-    width = 400
-    background = Background("img/background.png")
+    height = 600
+    width = 800
+    background = Background("img/background.jpg")
+    lossScreen = Background("img/loss_screen.png")
     allTimeScore = Score()
     allTimeScore.set_highscore(load_highscore())
 
@@ -86,7 +82,7 @@ class GameSettings:
     minSpeed = 1
     speedIncrementCount = 10
 
-    obstacleFrequency = 50
+    obstacleFrequency = 30
     obstacleSpeed = 3
 
     levelTick = 200
@@ -119,6 +115,11 @@ class SpeedCounter:
         self.count = 0
         self.direction = directions.get(direction)
 
+class Hitbox(pygame.sprite.Sprite):
+    def __init__(self, rect:pygame.Rect, orientation):
+        self.rect = rect
+        self.orientation = orientation
+
 class Player(pygame.sprite.Sprite):
     up = pygame.image.load("img/player/up_state.png")
     neutral = pygame.image.load("img/player/neutral_state.png")
@@ -131,7 +132,16 @@ class Player(pygame.sprite.Sprite):
         self.x = x
         self.y = y
         self.rect = pygame.Rect(x, y, Player.width, Player.height)
+        
+        self.hitboxes = [Hitbox(pygame.Rect(x, y, Player.width, Player.height), directions.get(0))]
+        #Upstate hitboxes
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y, Player.width, round(Player.height/2)), directions.get(1)))
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height), directions.get(1)))
+        #Downstate hitboxes
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y + round(Player.height/2), Player.width, round(Player.height/2)), directions.get(2)))
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height), directions.get(2)))
 
+        self.orientation = directions.get(0)
         self.currentSpeed = 1
         self.speedCounter = SpeedCounter(1)
 
@@ -163,6 +173,8 @@ class Player(pygame.sprite.Sprite):
             yAdjust = val
             self.y += val
         self.rect.move_ip(0, yAdjust)
+        for hitbox in self.hitboxes:
+            hitbox.rect.move_ip(0, yAdjust)
     
     def decrease_y_axis(self, val):
         if self.y - val < 0:
@@ -172,15 +184,17 @@ class Player(pygame.sprite.Sprite):
             yAdjust = val
             self.y -= val
         self.rect.move_ip(0, -yAdjust)
+        for hitbox in self.hitboxes:
+            hitbox.rect.move_ip(0, -yAdjust)
     
     def adjust_highscores(self):
-        score = {'score':self.score.score,
-                'level':self.score.level}
+        score = {'score':self.score.score}
         self.score.set_highscore(score)
         self.game.allTimeScore.set_highscore(score, True)
 
 def up_key_state(screen, player:Player):
     """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
+    player.orientation = directions.get(1)
     if player.y != 0:
         player.decrease_y_axis(1 * player.currentSpeed)
         player.increase_speed_counter(1)
@@ -189,6 +203,7 @@ def up_key_state(screen, player:Player):
 
 def down_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when the down arrow is pressed. Returns updated neutralCount """
+    player.orientation = directions.get(2)
     if player.y < Player.yBottomBarrier:
         player.increase_y_axis(1 * player.currentSpeed)
         screen.blit(player.down, (player.x, player.y))
@@ -203,9 +218,11 @@ def neutral_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when no relevant key is pressed. Returns updated neutralCount """
     if player.speedCounter.direction == directions.get(1):
         player.reset_speed()
+        player.orientation = directions.get(0)
         screen.blit(player.neutral, (player.x, player.y))
     else:
         player.increase_y_axis(1 * player.currentSpeed)
+        player.orientation = directions.get(2)
         screen.blit(player.down, (player.x, player.y))
     return neutralCount + 1
 
@@ -235,24 +252,29 @@ def wait_for_return():
                 return True
 
 def loss_screen(player:Player, screen:pygame.display):
-    screen.fill(white)
-    highScoreFont = pygame.font.SysFont("Ariel", 20)
-    highScoreText = highScoreFont.render(f"Level: {player.score.level}    Score: {player.score.score}", True, black)
-    screen.blit(highScoreText, highScoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2))))
+    screen.blit(GameSettings.lossScreen.image, GameSettings.lossScreen.rect)
 
-    lossFont = pygame.font.SysFont("Ariel", 40)
-    lossText = lossFont.render("Game Over", True, black)
-    screen.blit(lossText, lossText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2 - highScoreText.get_height()))))
+    lossFont = pygame.font.SysFont("Ariel", 100)
+    lossText = lossFont.render("Game Over", True, white)
+    screen.blit(lossText, lossText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/4))))
+
+    highScoreFont = pygame.font.SysFont("Ariel", 50)
+    highScoreText = highScoreFont.render(f"High Score: {Score.highScore}", True, white)
+    screen.blit(highScoreText, highScoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/3))))
+
+    scoreFont = pygame.font.SysFont("Ariel", 50)
+    scoreText = scoreFont.render(f"Your Score: {player.score.score}", True, white)
+    screen.blit(scoreText, scoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2))))
     
     retryFont = pygame.font.SysFont("Ariel", 30)
-    retryText = retryFont.render("Press Enter to try again.", True, black)
-    screen.blit(retryText, retryText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2 + highScoreText.get_height()))))
+    retryText = retryFont.render("Press Enter to try again.", True, white)
+    screen.blit(retryText, retryText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2 + scoreText.get_height()))))
     pygame.display.update()
     return wait_for_return()
 
 def score_HUD(screen, player:Player):
     font = pygame.font.SysFont("Ariel", 20)
-    text = font.render(f"Level: {player.score.level}    Score: {player.score.score}", True, black)
+    text = font.render(f"Score: {player.score.score}", True, black)
     screen.blit(text, text.get_rect())
 
 def tick_adjustments(player:Player, obstacles:list):
@@ -296,8 +318,12 @@ def main(player:Player, screen:pygame.display):
         move_obstacles(screen, obstacles, player)
         score_HUD(screen, player)
         pygame.display.update()
-        if len(pygame.sprite.spritecollide(player, obstacles, False)) > 0:
-            endState = True
+
+        for hitbox in player.hitboxes:
+            if hitbox.orientation == player.orientation:
+                if len(pygame.sprite.spritecollide(hitbox, obstacles, False)) > 0:
+                 endState = True
+
         fpsClock.tick(fps)
 
 if __name__ == "__main__":
