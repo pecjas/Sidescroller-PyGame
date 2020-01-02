@@ -100,23 +100,19 @@ class Obstacle(pygame.sprite.Sprite):
     images = [pygame.image.load("img/obstacles/obstacle.png"),
     pygame.image.load("img/obstacles/obstacle2.png"),
     pygame.image.load("img/obstacles/obstacle3.png")]
-    image = pygame.image.load("img/obstacles/obstacle.png")
-
-    width = image.get_width()
-    height = image.get_height()
 
     def __init__(self, x, y):
         self.image = Obstacle.images[random.randrange(0, len(Obstacle.images))]
-        width = self.image.get_width()
-        height = self.image.get_height()
+        self.width = self.image.get_width()
+        self.height = self.image.get_height()
 
-        self.yBottomBarrier = GameSettings.height - height
-        self.x = x + width
+        self.yBottomBarrier = GameSettings.height - self.height
+        self.x = x + self.width
         if y > self.yBottomBarrier:
             self.y = self.yBottomBarrier
         else:
             self.y = y
-        self.rect = pygame.Rect(x + width, y, width, height)
+        self.rect = pygame.Rect(x + self.width, y, self.width, self.height)
 
 class SpeedCounter:
     def __init__(self, direction):
@@ -185,17 +181,17 @@ class Player(pygame.sprite.Sprite):
 
 def up_key_state(screen, player:Player):
     """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
-    screen.blit(player.up, (player.x, player.y))
     if player.y != 0:
         player.decrease_y_axis(1 * player.currentSpeed)
         player.increase_speed_counter(1)
+    screen.blit(player.up, (player.x, player.y))
     return 0
 
 def down_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when the down arrow is pressed. Returns updated neutralCount """
     if player.y < Player.yBottomBarrier:
-        screen.blit(player.down, (player.x, player.y))
         player.increase_y_axis(1 * player.currentSpeed)
+        screen.blit(player.down, (player.x, player.y))
     else:
         screen.blit(player.neutral, (player.x, player.y))
     if neutralCount <= GameSettings.hoverLimit:
@@ -206,18 +202,18 @@ def down_key_state(screen, player:Player, neutralCount:int):
 def neutral_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when no relevant key is pressed. Returns updated neutralCount """
     if player.speedCounter.direction == directions.get(1):
-        screen.blit(player.neutral, (player.x, player.y))
         player.reset_speed()
+        screen.blit(player.neutral, (player.x, player.y))
     else:
-        screen.blit(player.down, (player.x, player.y))
         player.increase_y_axis(1 * player.currentSpeed)
+        screen.blit(player.down, (player.x, player.y))
     return neutralCount + 1
 
 def move_obstacles(screen, obstacles:list, player:Player):
     removedObstacles = []
     for obstacle in obstacles:
-        screen.blit(obstacle.image, (obstacle.x, obstacle.y))
         xShift = player.game.obstacleSpeed + (1 * player.score.level)
+        screen.blit(obstacle.image, (obstacle.x, obstacle.y))
         obstacle.x -= xShift
         obstacle.rect.move_ip(-(xShift), 0)
         if obstacle.x < -obstacle.width:
