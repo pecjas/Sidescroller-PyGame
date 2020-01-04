@@ -9,14 +9,14 @@ os.chdir("C:/Users/pecja/Development/Python/PyGame/SideScroller")
 #END
 
 #region Initializing Colors
-black = (0, 0, 0)
-white = (255, 255, 255)
-red = (255, 0, 0)
-green = (0, 255, 0)
-blue = (0, 0, 255)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
 #endregion
 
-directions = {
+DIRECTIONS = {
     0: 'Neutral',
     1: 'Up',
     2: 'Down' }
@@ -101,6 +101,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.image = Obstacle.images[random.randrange(0, len(Obstacle.images))]
         self.width = self.image.get_width()
         self.height = self.image.get_height()
+        self.speed = random.randint(0, 2)
 
         self.yBottomBarrier = GameSettings.height - self.height
         self.x = x + self.width
@@ -108,12 +109,12 @@ class Obstacle(pygame.sprite.Sprite):
             self.y = self.yBottomBarrier
         else:
             self.y = y
-        self.rect = pygame.Rect(x + self.width, y, self.width, self.height)
+        self.rect = pygame.Rect(x + self.width, self.y, self.width, self.height)
 
 class SpeedCounter:
     def __init__(self, direction):
         self.count = 0
-        self.direction = directions.get(direction)
+        self.direction = DIRECTIONS.get(direction)
 
 class Hitbox(pygame.sprite.Sprite):
     def __init__(self, rect:pygame.Rect, orientation):
@@ -133,15 +134,15 @@ class Player(pygame.sprite.Sprite):
         self.y = y
         self.rect = pygame.Rect(x, y, Player.width, Player.height)
         
-        self.hitboxes = [Hitbox(pygame.Rect(x, y, Player.width, Player.height), directions.get(0))]
+        self.hitboxes = [Hitbox(pygame.Rect(x, y, Player.width, Player.height), DIRECTIONS.get(0))]
         #Upstate hitboxes
-        self.hitboxes.append(Hitbox(pygame.Rect(x, y, Player.width, round(Player.height/2)), directions.get(1)))
-        self.hitboxes.append(Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height), directions.get(1)))
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y, Player.width, round(Player.height/2)), DIRECTIONS.get(1)))
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height), DIRECTIONS.get(1)))
         #Downstate hitboxes
-        self.hitboxes.append(Hitbox(pygame.Rect(x, y + round(Player.height/2), Player.width, round(Player.height/2)), directions.get(2)))
-        self.hitboxes.append(Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height), directions.get(2)))
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y + round(Player.height/2), Player.width, round(Player.height/2)), DIRECTIONS.get(2)))
+        self.hitboxes.append(Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height), DIRECTIONS.get(2)))
 
-        self.orientation = directions.get(0)
+        self.orientation = DIRECTIONS.get(0)
         self.currentSpeed = 1
         self.speedCounter = SpeedCounter(1)
 
@@ -156,7 +157,7 @@ class Player(pygame.sprite.Sprite):
         """ Wrapper for increasing speed counter. If the direction has changed, we'll create a new counter
             and start the count over.
         """
-        if self.speedCounter.direction != directions.get(direction):
+        if self.speedCounter.direction != DIRECTIONS.get(direction):
             self.reset_speed()
             self.speedCounter = SpeedCounter(direction)
         if self.currentSpeed == GameSettings.maxSpeed:
@@ -194,7 +195,7 @@ class Player(pygame.sprite.Sprite):
 
 def up_key_state(screen, player:Player):
     """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
-    player.orientation = directions.get(1)
+    player.orientation = DIRECTIONS.get(1)
     if player.y != 0:
         player.decrease_y_axis(1 * player.currentSpeed)
         player.increase_speed_counter(1)
@@ -203,7 +204,7 @@ def up_key_state(screen, player:Player):
 
 def down_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when the down arrow is pressed. Returns updated neutralCount """
-    player.orientation = directions.get(2)
+    player.orientation = DIRECTIONS.get(2)
     if player.y < Player.yBottomBarrier:
         player.increase_y_axis(1 * player.currentSpeed)
         screen.blit(player.down, (player.x, player.y))
@@ -216,25 +217,29 @@ def down_key_state(screen, player:Player, neutralCount:int):
 
 def neutral_key_state(screen, player:Player, neutralCount:int):
     """ Logic to execute when no relevant key is pressed. Returns updated neutralCount """
-    if player.speedCounter.direction == directions.get(1):
+    if player.speedCounter.direction == DIRECTIONS.get(1):
         player.reset_speed()
-        player.orientation = directions.get(0)
+        player.orientation = DIRECTIONS.get(0)
         screen.blit(player.neutral, (player.x, player.y))
     else:
         player.increase_y_axis(1 * player.currentSpeed)
-        player.orientation = directions.get(2)
+        player.orientation = DIRECTIONS.get(2)
         screen.blit(player.down, (player.x, player.y))
     return neutralCount + 1
 
-def move_obstacles(screen, obstacles:list, player:Player):
+def move_obstacles(screen, obstacles: list, player: Player):
     removedObstacles = []
     for obstacle in obstacles:
-        xShift = player.game.obstacleSpeed + (1 * player.score.level)
-        screen.blit(obstacle.image, (obstacle.x, obstacle.y))
+        xShift = player.game.obstacleSpeed + player.score.level + obstacle.speed
+        screen.blit(GameSettings.background.image,
+                    (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y),
+                    (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y, int(obstacle.width/2), obstacle.height))
         obstacle.x -= xShift
         obstacle.rect.move_ip(-(xShift), 0)
         if obstacle.x < -obstacle.width:
             removedObstacles.append(obstacle)
+        else:
+            screen.blit(obstacle.image, (obstacle.x, obstacle.y))
     for obstacle in removedObstacles:
         obstacles.remove(obstacle)
 
@@ -255,29 +260,30 @@ def loss_screen(player:Player, screen:pygame.display):
     screen.blit(GameSettings.lossScreen.image, GameSettings.lossScreen.rect)
 
     lossFont = pygame.font.SysFont("Ariel", 100)
-    lossText = lossFont.render("Game Over", True, white)
+    lossText = lossFont.render("Game Over", True, WHITE)
     screen.blit(lossText, lossText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/4))))
 
     highScoreFont = pygame.font.SysFont("Ariel", 50)
-    highScoreText = highScoreFont.render(f"High Score: {Score.highScore}", True, white)
+    highScoreText = highScoreFont.render(f"High Score: {Score.highScore}", True, WHITE)
     screen.blit(highScoreText, highScoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/3))))
 
     scoreFont = pygame.font.SysFont("Ariel", 50)
-    scoreText = scoreFont.render(f"Your Score: {player.score.score}", True, white)
+    scoreText = scoreFont.render(f"Your Score: {player.score.score}", True, WHITE)
     screen.blit(scoreText, scoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2))))
     
     retryFont = pygame.font.SysFont("Ariel", 30)
-    retryText = retryFont.render("Press Enter to try again.", True, white)
+    retryText = retryFont.render("Press Enter to try again.", True, WHITE)
     screen.blit(retryText, retryText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2 + scoreText.get_height()))))
     pygame.display.update()
     return wait_for_return()
 
 def score_HUD(screen, player:Player):
     font = pygame.font.SysFont("Ariel", 20)
-    text = font.render(f"Score: {player.score.score}", True, black)
+    text = font.render(f"Score: {player.score.score} ", True, BLACK)
+    screen.blit(GameSettings.background.image, text.get_rect(), text.get_rect())
     screen.blit(text, text.get_rect())
 
-def tick_adjustments(player:Player, obstacles:list):
+def tick_adjustments(player: Player, obstacles: list):
     """ Updates to score and game based on current tick. """
     if player.score.score % player.game.obstacleFrequency == 0:
         obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50), 
@@ -291,15 +297,15 @@ def tick_adjustments(player:Player, obstacles:list):
 def main(player:Player, screen:pygame.display):
     fps = 30
     fpsClock = pygame.time.Clock()
-
     endState = False
-
     neutralCount = 0
     obstacles = []
+    screen.blit(GameSettings.background.image, GameSettings.background.rect)
 
     while not endState:
         player.score.score += 1
-        screen.blit(GameSettings.background.image, GameSettings.background.rect)
+        screen.blit(GameSettings.background.image, player.rect, player.rect)
+        score_HUD(screen, player)
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP]:
@@ -314,15 +320,13 @@ def main(player:Player, screen:pygame.display):
                 quit_game()
         
         tick_adjustments(player, obstacles)
-
         move_obstacles(screen, obstacles, player)
-        score_HUD(screen, player)
         pygame.display.update()
 
         for hitbox in player.hitboxes:
             if hitbox.orientation == player.orientation:
                 if len(pygame.sprite.spritecollide(hitbox, obstacles, False)) > 0:
-                 endState = True
+                    endState = True
 
         fpsClock.tick(fps)
 
