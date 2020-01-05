@@ -262,7 +262,7 @@ def up_key_state(screen, player: Player, fpsOverMin: int):
     player.orientation = DIRECTIONS.get(1)
     if player.y != 0:
         if player.can_move(player.currentSpeed / fpsOverMin, previousOrientation):
-            player.decrease_y_axis(player.currentSpeed + player.levelSpeedBoost)
+            player.decrease_y_axis(player.currentSpeed + int(player.levelSpeedBoost))
         player.increase_speed_counter(1, fpsOverMin)
     screen.blit(player.up, (player.x, player.y))
     return 0
@@ -273,7 +273,7 @@ def down_key_state(screen: pygame.display, player: Player, neutralCount: int, fp
     player.orientation = DIRECTIONS.get(2)
     if player.y < Player.yBottomBarrier:
         if player.can_move(player.currentSpeed / fpsOverMin, previousOrientation):
-            player.increase_y_axis(player.currentSpeed + player.levelSpeedBoost)
+            player.increase_y_axis(player.currentSpeed + int(player.levelSpeedBoost))
         screen.blit(player.down, (player.x, player.y))
     else:
         screen.blit(player.neutral, (player.x, player.y))
@@ -291,7 +291,7 @@ def neutral_key_state(screen, player: Player, neutralCount: int, fpsOverMin: flo
         screen.blit(player.neutral, (player.x, player.y))
     elif player.rect.bottom < GameSettings.height:
         if player.can_move(player.currentSpeed, previousOrientation):
-            player.increase_y_axis(player.currentSpeed + player.levelSpeedBoost)
+            player.increase_y_axis(player.currentSpeed + int(player.levelSpeedBoost))
         player.orientation = DIRECTIONS.get(2)
         screen.blit(player.down, (player.x, player.y))
     else:
