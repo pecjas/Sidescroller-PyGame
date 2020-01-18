@@ -45,6 +45,9 @@ class Score:
     def __init__(self):
         self.score = 0
         self.level = 1
+        self.countToObstacleTick = 0
+        self.countToLevelTick = 0
+        self.countToFrequencyTick = 0
 
     def reset_score(self):
         """ Reset score and update highscore if needed. """
@@ -96,16 +99,16 @@ class GameSettings:
     maxSpeed = 3
     minSpeed = 2
     speedIncrementCount = 10
-    minFps = 30
+    minFps = 60
     maxFps = 150
 
-    obstacleFrequency = 60 #Increase for fewer obstacles from beginning
-    obstacleTickAdjust = 10 #Amount obstacle frequency adjusts per level
-    obstacleTickSpeedAdjust = 1 #Amount speed increases per level after hitting maxFps
+    obstacleFrequency = 40 #Increase for fewer obstacles from beginning
+    obstacleTickAdjust = 40 #Amount obstacle frequency adjusts per level
+    obstacleTickSpeedAdjust = 0.5 #Amount speed increases per level after hitting maxFps
 
-    fpsTick = 30
+    fpsTick = 2
     levelTick = 100
-    frequencyTick = 1000 #Increase for lower obstacle increase per level
+    frequencyTick = 800 #Increase for lower obstacle increase per level
 
     def __init__(self):
         self.reset()
@@ -299,12 +302,16 @@ def neutral_key_state(screen, player: Player, neutralCount: int, fpsOverMin: flo
     return neutralCount + fpsOverMin
 
 def move_obstacles(screen, obstacles: list, player: Player, fps: int):
-    removedObstacles = []
+    """ Move obstacles and refresh background for past obstacle positions. """
+    #Clear current obstalce locations to refresh background
     for obstacle in obstacles:
-        xShift = obstacle.speed + player.game.obstacleSpeed
         screen.blit(GameSettings.background.image,
                     (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y),
                     (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y, int(obstacle.width/2), obstacle.height))
+    #Blit obstacles at new position
+    removedObstacles = []
+    for obstacle in obstacles:
+        xShift = int(player.game.obstacleSpeed + player.score.level + obstacle.speed)
         obstacle.x -= xShift
         obstacle.rect.move_ip(-(xShift), 0)
         if obstacle.x < -obstacle.width:
@@ -368,18 +375,21 @@ def tick_adjustments(player: Player, obstacles: list, fps: int, fpsOverMin: floa
 
     RETURN: Updated fps
     """
-    if round(player.score.score, 3) % player.game.obstacleFrequency == 0:
+    if player.score.countToObstacleTick > player.game.obstacleFrequency:
         obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50), 
                         random.randrange(0, GameSettings.height)))
-    if round(player.score.score, 3) % GameSettings.levelTick == 0:
+        player.score.countToObstacleTick -= player.game.obstacleFrequency
+    if player.score.countToLevelTick > GameSettings.levelTick:
         player.score.level += 1
+        player.score.countToLevelTick -= GameSettings.levelTick
         if fps < GameSettings.maxFps:
             fps += GameSettings.fpsTick
             fpsOverMin = fps / GameSettings.minFps
         else:
             player.game.obstacleSpeed += GameSettings.obstacleTickSpeedAdjust
             player.levelSpeedBoost += GameSettings.obstacleTickSpeedAdjust / 2
-    if round(player.score.score, 3) % GameSettings.frequencyTick == 0:
+    if player.score.countToFrequencyTick > GameSettings.frequencyTick:
+        player.score.countToFrequencyTick -= GameSettings.frequencyTick
         if player.game.obstacleFrequency > GameSettings.obstacleTickAdjust:
             player.game.obstacleFrequency -= GameSettings.obstacleTickAdjust
         else:
@@ -398,7 +408,11 @@ def main(player: Player, screen: pygame.display):
     screen.blit(GameSettings.background.image, GameSettings.background.rect)
 
     while not endState:
-        player.score.score += GameSettings.minFps/gameFps
+        scoreAdjust = GameSettings.minFps/gameFps
+        player.score.score += scoreAdjust
+        player.score.countToObstacleTick += scoreAdjust
+        player.score.countToLevelTick += scoreAdjust
+
         screen.blit(GameSettings.background.image, player.rect, player.rect)
         score_HUD(screen, player)
 
