@@ -439,7 +439,7 @@ def main(player: Player, screen: pygame.display):
 
         fpsClock.tick(gameFps)
 
-if __name__ == "__main__":
+def start_game():
     pygame.init()
     pygame.display.set_caption("Sky Scroller")
     currentPlayer = Player(0, Player.yBottomBarrier)
@@ -451,3 +451,6 @@ if __name__ == "__main__":
         currentPlayer.adjust_highscores()
         play = loss_screen(currentPlayer, currentScreen)
         currentPlayer.prepare_new_game()
+
+if __name__ == "__main__":
+    start_game()
