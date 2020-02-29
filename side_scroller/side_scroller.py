@@ -1,12 +1,12 @@
 import sys
 import os
 import random
-import json
 import pygame
-
-ABSPATH = os.path.abspath(__file__)
-DNAME = os.path.dirname(ABSPATH)
-os.chdir(DNAME)
+from side_scroller.score import Score
+from side_scroller.obstacle import Obstacle, move_obstacles
+from side_scroller.player import Player
+from side_scroller.settings import GameSettings
+from side_scroller.states import up_key_state, neutral_key_state, down_key_state
 
 #region Initializing Colors
 BLACK = (0, 0, 0)
@@ -16,316 +16,128 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 #endregion
 
-DIRECTIONS = {
-    0: 'Neutral',
-    1: 'Up',
-    2: 'Down' }
+def change_to_file_directory():
+    absolute_path = os.path.abspath(__file__)
+    directory_name = os.path.dirname(absolute_path)
+    os.chdir(directory_name)
 
-highscore = {}
+def start_game():
+    pygame.init()
+    pygame.display.set_caption("Sky Scroller")
+    current_player = Player(0, Player.y_bottom_barrier)
+    current_screen = pygame.display.set_mode((GameSettings.width, GameSettings.height))
 
-def load_highscore():
-    """
-    Attempts to load highscore from file.
+    play = True
+    while play is True:
+        main(current_player, current_screen)
+        current_player.adjust_high_scores()
+        play = loss_screen(current_player, current_screen)
+        current_player.prepare_new_game()
 
-    RETURNS: highscore info as dictionary. If it's not already within game, retrieves
-    from file in same directory.
-    """
-    if len(highscore) > 0:
-        return highscore
-    try:
-        return json.load(open('highscore.txt'))
-    except:
-        return {}
+def main(player: Player, screen: pygame.display):
+    """ Main tag. Initializes game settings and main game loop. """
+    game_fps = GameSettings.minFps
+    fps_over_min = 1
+    fps_clock = pygame.time.Clock()
+    end_state = False
+    neutral_count = 0
+    obstacles = []
+    screen.blit(GameSettings.background.image, GameSettings.background.rect)
 
+    while not end_state:
+        score_adjustment = GameSettings.minFps/game_fps
+        player.score.score += score_adjustment
+        player.score.countToObstacleTick += score_adjustment
+        player.score.countToLevelTick += score_adjustment
 
-class Score:
-    """ Tracks score. Intance tracks a given play's score/level. """
-    highScore = 0
+        screen.blit(GameSettings.background.image, player.rect, player.rect)
+        score_hud(screen, player)
 
-    def __init__(self):
-        self.score = 0
-        self.level = 1
-        self.countToObstacleTick = 0
-        self.countToLevelTick = 0
-        self.countToFrequencyTick = 0
-
-    def reset_score(self):
-        """ Reset score and update highscore if needed. """
-        if self.score > Score.highScore:
-            Score.highScore = self.score
-        self.score = 0
-        self.level = 1
-    def set_highscore(self, score: dict, save: bool=False):
-        """
-        Updates highscore if passed in score is higher.
-
-        RETURNS: True if score is higher than previous highscore. Otherwise, False.
-        """
-        if len(score) == 0:
-            return False
-        updated = False
-        if score.get('score') > Score.highScore:
-            Score.highScore = score.get('score')
-            updated = True
-        if updated is True and save is True:
-            try:
-                json.dump(score, open('highscore.txt', 'w'))
-            except:
-                raise Exception("Failed to save highscore to file.")
-        return updated
-
-class Background(pygame.sprite.Sprite):
-    """ The game's background image information. """
-    def __init__(self, imageFile: str):
-        pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.image.load(imageFile)
-        self.rect = self.image.get_rect()
-        self.rect.left = 0
-        self.rect.top = 0
-
-class GameSettings:
-    """
-    Game settings to simplify game adjustments. Most values are global, but
-    instances allow maintaining values that could update throught game.
-    """
-    height = 600
-    width = 800
-    background = Background("img/background.jpg")
-    lossScreen = Background("img/loss_screen.png")
-    allTimeScore = Score()
-    allTimeScore.set_highscore(load_highscore())
-
-    hoverLimit = 20
-    maxSpeed = 3
-    minSpeed = 2
-    speedIncrementCount = 10
-    minFps = 60
-    maxFps = 150
-
-    obstacleFrequency = 40 #Increase for fewer obstacles from beginning
-    obstacleTickAdjust = 40 #Amount obstacle frequency adjusts per level
-    obstacleTickSpeedAdjust = 0.5 #Amount speed increases per level after hitting maxFps
-
-    fpsTick = 2
-    levelTick = 100
-    frequencyTick = 800 #Increase for lower obstacle increase per level
-
-    def __init__(self):
-        self.reset()
-
-    def reset(self):
-        """ Sets gamesetting defaults. """
-        self.obstacleFrequency = GameSettings.obstacleFrequency
-        self.obstacleSpeed = 0
-
-class Obstacle(pygame.sprite.Sprite):
-    """ Obstacles the player must avoid. """
-    images = [pygame.image.load("img/obstacles/obstacle.png"),
-    pygame.image.load("img/obstacles/obstacle2.png"),
-    pygame.image.load("img/obstacles/obstacle3.png")]
-
-    def __init__(self, x, y):
-        self.image = Obstacle.images[random.randrange(0, len(Obstacle.images))]
-        self.width = self.image.get_width()
-        self.height = self.image.get_height()
-        self.speed = random.randint(1, 2)
-
-        self.yBottomBarrier = GameSettings.height - self.height
-        self.x = x + self.width
-        if y > self.yBottomBarrier:
-            self.y = self.yBottomBarrier
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            neutral_count = up_key_state(screen, player, fps_over_min)
+        elif keys[pygame.K_DOWN] or (neutral_count > GameSettings.hoverLimit * fps_over_min):
+            neutral_count = down_key_state(screen, player, neutral_count, fps_over_min)
         else:
-            self.y = y
-        self.rect = pygame.Rect(x + self.width, self.y, self.width, self.height)
+            neutral_count = neutral_key_state(screen, player, neutral_count, fps_over_min)
 
-class SpeedCounter:
-    """ Tracks direction and distance traveled. Used to determine object speed. """
-    def __init__(self, direction):
-        self.count = 0
-        self.direction = DIRECTIONS.get(direction)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                quit_game()
 
-class Hitbox(pygame.sprite.Sprite):
-    """ Hitboxes to facilitate collision detection. """
-    def __init__(self, rect: pygame.Rect, orientation):
-        self.rect = rect
-        self.orientation = orientation
+        game_fps, fps_over_min = tick_adjustments(player, obstacles, game_fps, fps_over_min)
+        move_obstacles(screen, obstacles, player)
+        pygame.display.update()
 
-class Player(pygame.sprite.Sprite):
-    """ The player sprite controlled by the user. """
-    up = pygame.image.load("img/player/up_state.png")
-    neutral = pygame.image.load("img/player/neutral_state.png")
-    down = pygame.image.load("img/player/down_state.png")
-    width = max(up.get_width(), neutral.get_width(), down.get_width())
-    height = max(up.get_height(), neutral.get_height(), down.get_height())
-    yBottomBarrier = GameSettings.height - height
+        for hitbox in player.hitboxes:
+            if hitbox.orientation == player.orientation:
+                if len(pygame.sprite.spritecollide(hitbox, obstacles, False)) > 0:
+                    end_state = True
 
-    def __init__(self, x: int=0, y: int=0):
-        self.x = x
-        self.y = y
-        self.rect = pygame.Rect(x, y, Player.width, Player.height)
+        fps_clock.tick(game_fps)
 
-        self.hitboxes = [Hitbox(pygame.Rect(x, y, Player.width, Player.height), DIRECTIONS.get(0))]
-        #Upstate hitboxes
-        self.hitboxes.append(
-            Hitbox(pygame.Rect(x, y, Player.width, round(Player.height/2)),
-            DIRECTIONS.get(1)))
-        self.hitboxes.append(
-            Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height),
-            DIRECTIONS.get(1)))
-        #Downstate hitboxes
-        self.hitboxes.append(
-            Hitbox(pygame.Rect(x, y + round(Player.height/2), Player.width, round(Player.height/2)),
-            DIRECTIONS.get(2)))
-        self.hitboxes.append(
-            Hitbox(pygame.Rect(x, y, round(Player.width/2), Player.height),
-            DIRECTIONS.get(2)))
+def score_hud(screen, player: Player):
+    """ Displays up-to-date score during gameplay. """
+    font = pygame.font.SysFont("Ariel", 20)
+    text = font.render(f"Score: {int(player.score.score)} Level: {player.score.level}", True, BLACK)
+    screen.blit(GameSettings.background.image, text.get_rect(), text.get_rect())
+    screen.blit(text, text.get_rect())
 
-        self.orientation = DIRECTIONS.get(0)
-        self.currentSpeed = 1
-        self.levelSpeedBoost = 0
-        self.speedCounter = SpeedCounter(1)
-        self.progressToMove = 0
+def tick_adjustments(player: Player, obstacles: list, fps: int, fps_over_min: float):
+    """
+    Updates to score and game based on current tick.
 
-        self.score = Score()
-        self.game = GameSettings()
-
-    def reset_speed(self):
-        """ Reset SpeedCounter to defaults. Should be called whenever a new round starts. """
-        self.speedCounter.count = 0
-        self.currentSpeed = GameSettings.minSpeed
-        self.levelSpeedBoost = 0
-        self.progressToMove = 0
-
-    def increase_speed_counter(self, direction: int, fpsOverMin: float):
-        """
-            Wrapper for increasing speed counter. If the direction has changed, we'll create a new
-            counter and start the count over.
-        """
-        if self.speedCounter.direction != DIRECTIONS.get(direction):
-            self.reset_speed()
-            self.speedCounter = SpeedCounter(direction)
-        if self.currentSpeed == GameSettings.maxSpeed:
-            return
-        self.speedCounter.count += 1
-        if (self.speedCounter.count / int(fpsOverMin)) % GameSettings.speedIncrementCount == 0:
-            self.currentSpeed += 1
-
-    def increase_y_axis(self, val: int):
-        """ Move player down. Includes handling to avoid leaving screen. """
-        if self.y + val > self.yBottomBarrier:
-            yAdjust = self.yBottomBarrier - self.y
-            self.y = self.yBottomBarrier
+    RETURN: Updated fps
+    """
+    if player.score.countToObstacleTick > player.game.obstacleFrequency:
+        obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50),
+                                  random.randrange(0, GameSettings.height)))
+        player.score.countToObstacleTick -= player.game.obstacleFrequency
+    if player.score.countToLevelTick > GameSettings.levelTick:
+        player.score.level += 1
+        player.score.countToLevelTick -= GameSettings.levelTick
+        if fps < GameSettings.maxFps:
+            fps += GameSettings.fpsTick
+            fps_over_min = fps / GameSettings.minFps
         else:
-            yAdjust = val
-            self.y += val
-        self.rect.move_ip(0, yAdjust)
-        for hitbox in self.hitboxes:
-            hitbox.rect.move_ip(0, yAdjust)
-    
-    def decrease_y_axis(self, val: int):
-        """ Move player up. Includes handling to avoid leaving screen. """
-        if self.y - val < 0:
-            yAdjust = self.y
-            self.y = 0
+            player.game.obstacleSpeed += GameSettings.obstacleTickSpeedAdjust
+            player.adjust_level_speed_boost(GameSettings.obstacleTickSpeedAdjust / 2)
+    if player.score.countToFrequencyTick > GameSettings.frequencyTick:
+        player.score.countToFrequencyTick -= GameSettings.frequencyTick
+        if player.game.obstacleFrequency > GameSettings.obstacleTickAdjust:
+            player.game.obstacleFrequency -= GameSettings.obstacleTickAdjust
         else:
-            yAdjust = val
-            self.y -= val
-        self.rect.move_ip(0, -yAdjust)
-        for hitbox in self.hitboxes:
-            hitbox.rect.move_ip(0, -yAdjust)
+            new_frequency = int(player.game.obstacleFrequency/2)
+            player.game.obstacleFrequency = new_frequency
+    return fps, fps_over_min
 
-    def adjust_highscores(self):
-        """ Wrapper tag to update highscore after the completion of a game. """
-        score = {'score':int(self.score.score)}
-        self.score.set_highscore(score, True)
+def loss_screen(player: Player, screen: pygame.display):
+    """ Screen to display after player has collided with an obstacle. """
+    screen.blit(GameSettings.lossScreen.image, GameSettings.lossScreen.rect)
 
-    def can_move(self, movement: int, direction: str):
-        """
-        Checks if player has made enough progress to move a pixel
-        and updates progressToMove accordingly
-        RETURNS: True if player can move
-        """
-        if direction != self.orientation:
-            self.progressToMove = movement
-            return False
-        self.progressToMove += movement
-        if self.progressToMove < 1:
-            return False
-        self.progressToMove -= 1
-        return True
+    loss_font = pygame.font.SysFont("Ariel", 100)
+    loss_text = loss_font.render("Game Over", True, WHITE)
+    screen.blit(loss_text,
+                loss_text.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/4))))
 
-    def prepare_new_game(self):
-        self.reset_speed()
-        self.score.reset_score()
-        self.game.reset()
+    high_score_font = pygame.font.SysFont("Ariel", 50)
+    high_score_text = high_score_font.render(f"High Score: {int(Score.high_score.get('score'))}", True, WHITE)
+    screen.blit(high_score_text,
+                high_score_text.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/3))))
 
-def up_key_state(screen, player: Player, fpsOverMin: int):
-    """ Logic to execute when the up arrow is pressed. Returns updated neutralCount """
-    previousOrientation = player.orientation
-    player.orientation = DIRECTIONS.get(1)
-    if player.y != 0:
-        if player.can_move(player.currentSpeed / fpsOverMin, previousOrientation):
-            player.decrease_y_axis(player.currentSpeed + int(player.levelSpeedBoost))
-        player.increase_speed_counter(1, fpsOverMin)
-    screen.blit(player.up, (player.x, player.y))
-    return 0
+    score_font = pygame.font.SysFont("Ariel", 50)
+    score_text = score_font.render(f"Your Score: {int(player.score.score)}", True, WHITE)
+    screen.blit(score_text,
+                score_text.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2))))
 
-def down_key_state(screen: pygame.display, player: Player, neutralCount: int, fpsOverMin: int):
-    """ Logic to execute when the down arrow is pressed. Returns updated neutralCount """
-    previousOrientation = player.orientation
-    player.orientation = DIRECTIONS.get(2)
-    if player.y < Player.yBottomBarrier:
-        if player.can_move(player.currentSpeed / fpsOverMin, previousOrientation):
-            player.increase_y_axis(player.currentSpeed + int(player.levelSpeedBoost))
-        screen.blit(player.down, (player.x, player.y))
-    else:
-        screen.blit(player.neutral, (player.x, player.y))
-    if neutralCount <= (GameSettings.hoverLimit * fpsOverMin):
-        neutralCount = 0
-    player.increase_speed_counter(2, fpsOverMin)
-    return neutralCount
-
-def neutral_key_state(screen, player: Player, neutralCount: int, fpsOverMin: float):
-    """ Logic to execute when no relevant key is pressed. Returns updated neutralCount """
-    previousOrientation = player.orientation
-    if player.speedCounter.direction == DIRECTIONS.get(1):
-        player.reset_speed()
-        player.orientation = DIRECTIONS.get(0)
-        screen.blit(player.neutral, (player.x, player.y))
-    elif player.rect.bottom < GameSettings.height:
-        if player.can_move(player.currentSpeed, previousOrientation):
-            player.increase_y_axis(player.currentSpeed + int(player.levelSpeedBoost))
-        player.orientation = DIRECTIONS.get(2)
-        screen.blit(player.down, (player.x, player.y))
-    else:
-        screen.blit(player.neutral, (player.x, player.y))
-    return neutralCount + fpsOverMin
-
-def move_obstacles(screen, obstacles: list, player: Player, fps: int):
-    """ Move obstacles and refresh background for past obstacle positions. """
-    #Clear current obstalce locations to refresh background
-    for obstacle in obstacles:
-        screen.blit(GameSettings.background.image,
-                    (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y),
-                    (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y, int(obstacle.width/2), obstacle.height))
-    #Blit obstacles at new position
-    removedObstacles = []
-    for obstacle in obstacles:
-        xShift = int(player.game.obstacleSpeed + player.score.level + obstacle.speed)
-        obstacle.x -= xShift
-        obstacle.rect.move_ip(-(xShift), 0)
-        if obstacle.x < -obstacle.width:
-            removedObstacles.append(obstacle)
-        else:
-            screen.blit(obstacle.image, (obstacle.x, obstacle.y))
-    for obstacle in removedObstacles:
-        obstacles.remove(obstacle)
-
-def quit_game():
-    """ Exit game. Executed when 'x' is clicked. """
-    pygame.display.quit()
-    pygame.quit()
-    sys.exit()
+    retry_font = pygame.font.SysFont("Ariel", 30)
+    retry_text = retry_font.render("Press Enter to try again.", True, WHITE)
+    screen.blit(retry_text,
+                retry_text.get_rect(
+                    center=(int(GameSettings.width/2),
+                    int(GameSettings.height/2 + score_text.get_height()))))
+    pygame.display.update()
+    return wait_for_return()
 
 def wait_for_return():
     """ Hangs game on current screen until player hits Return or quits. """
@@ -336,121 +148,12 @@ def wait_for_return():
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 return True
 
-def loss_screen(player: Player, screen: pygame.display):
-    """ Screen to display after player has collided with an obstacle. """
-    screen.blit(GameSettings.lossScreen.image, GameSettings.lossScreen.rect)
-
-    lossFont = pygame.font.SysFont("Ariel", 100)
-    lossText = lossFont.render("Game Over", True, WHITE)
-    screen.blit(lossText,
-                lossText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/4))))
-
-    highScoreFont = pygame.font.SysFont("Ariel", 50)
-    highScoreText = highScoreFont.render(f"High Score: {int(Score.highScore)}", True, WHITE)
-    screen.blit(highScoreText,
-                highScoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/3))))
-
-    scoreFont = pygame.font.SysFont("Ariel", 50)
-    scoreText = scoreFont.render(f"Your Score: {int(player.score.score)}", True, WHITE)
-    screen.blit(scoreText,
-                scoreText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2))))
-
-    retryFont = pygame.font.SysFont("Ariel", 30)
-    retryText = retryFont.render("Press Enter to try again.", True, WHITE)
-    screen.blit(retryText,
-                retryText.get_rect(center=(int(GameSettings.width/2), int(GameSettings.height/2 + scoreText.get_height()))))
-    pygame.display.update()
-    return wait_for_return()
-
-def score_HUD(screen, player: Player):
-    """ Displays up-to-date score during gameplay. """
-    font = pygame.font.SysFont("Ariel", 20)
-    text = font.render(f"Score: {int(player.score.score)} Level: {player.score.level}", True, BLACK)
-    screen.blit(GameSettings.background.image, text.get_rect(), text.get_rect())
-    screen.blit(text, text.get_rect())
-
-def tick_adjustments(player: Player, obstacles: list, fps: int, fpsOverMin: float):
-    """
-    Updates to score and game based on current tick.
-
-    RETURN: Updated fps
-    """
-    if player.score.countToObstacleTick > player.game.obstacleFrequency:
-        obstacles.append(Obstacle(random.randrange(GameSettings.width, GameSettings.width + 50), 
-                        random.randrange(0, GameSettings.height)))
-        player.score.countToObstacleTick -= player.game.obstacleFrequency
-    if player.score.countToLevelTick > GameSettings.levelTick:
-        player.score.level += 1
-        player.score.countToLevelTick -= GameSettings.levelTick
-        if fps < GameSettings.maxFps:
-            fps += GameSettings.fpsTick
-            fpsOverMin = fps / GameSettings.minFps
-        else:
-            player.game.obstacleSpeed += GameSettings.obstacleTickSpeedAdjust
-            player.levelSpeedBoost += GameSettings.obstacleTickSpeedAdjust / 2
-    if player.score.countToFrequencyTick > GameSettings.frequencyTick:
-        player.score.countToFrequencyTick -= GameSettings.frequencyTick
-        if player.game.obstacleFrequency > GameSettings.obstacleTickAdjust:
-            player.game.obstacleFrequency -= GameSettings.obstacleTickAdjust
-        else:
-            newFrequency = int(player.game.obstacleFrequency/2)
-            player.game.obstacleFrequency = newFrequency
-    return fps, fpsOverMin
-
-def main(player: Player, screen: pygame.display):
-    """ Main tag. Initializes game settings and main game loop. """
-    gameFps = GameSettings.minFps
-    fpsOverMin = 1
-    fpsClock = pygame.time.Clock()
-    endState = False
-    neutralCount = 0
-    obstacles = []
-    screen.blit(GameSettings.background.image, GameSettings.background.rect)
-
-    while not endState:
-        scoreAdjust = GameSettings.minFps/gameFps
-        player.score.score += scoreAdjust
-        player.score.countToObstacleTick += scoreAdjust
-        player.score.countToLevelTick += scoreAdjust
-
-        screen.blit(GameSettings.background.image, player.rect, player.rect)
-        score_HUD(screen, player)
-
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]:
-            neutralCount = up_key_state(screen, player, fpsOverMin)
-        elif keys[pygame.K_DOWN] or (neutralCount > GameSettings.hoverLimit * fpsOverMin):
-            neutralCount = down_key_state(screen, player, neutralCount, fpsOverMin)
-        else:
-            neutralCount = neutral_key_state(screen, player, neutralCount, fpsOverMin)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                quit_game()
-
-        gameFps, fpsOverMin = tick_adjustments(player, obstacles, gameFps, fpsOverMin)
-        move_obstacles(screen, obstacles, player, gameFps)
-        pygame.display.update()
-
-        for hitbox in player.hitboxes:
-            if hitbox.orientation == player.orientation:
-                if len(pygame.sprite.spritecollide(hitbox, obstacles, False)) > 0:
-                    endState = True
-
-        fpsClock.tick(gameFps)
-
-def start_game():
-    pygame.init()
-    pygame.display.set_caption("Sky Scroller")
-    currentPlayer = Player(0, Player.yBottomBarrier)
-    currentScreen = pygame.display.set_mode((GameSettings.width, GameSettings.height))
-
-    play = True
-    while play is True:
-        main(currentPlayer, currentScreen)
-        currentPlayer.adjust_highscores()
-        play = loss_screen(currentPlayer, currentScreen)
-        currentPlayer.prepare_new_game()
+def quit_game():
+    """ Exit game. Executed when 'x' is clicked. """
+    pygame.display.quit()
+    pygame.quit()
+    sys.exit()
 
 if __name__ == "__main__":
+    change_to_file_directory()
     start_game()

@@ -1,0 +1,7 @@
+MAIN_DIRECTORY = "side_scroller/"
+
+IMAGE_PATH = f"{MAIN_DIRECTORY}img/"
+OBSTACLE_PATH = f"{IMAGE_PATH}obstacles/"
+PLAYER_PATH = f"{IMAGE_PATH}player/"
+
+SCORE_PATH = f"{MAIN_DIRECTORY}/score/"
