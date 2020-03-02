@@ -58,7 +58,7 @@ class Player(pygame.sprite.Sprite):
         self.progress_to_move = 0
 
         self.score = Score()
-        self.game = GameSettings()
+        self.game_settings = GameSettings()
 
     def get_current_speed(self):
         return self.current_speed
@@ -89,7 +89,7 @@ class Player(pygame.sprite.Sprite):
         if self.current_speed == GameSettings.maxSpeed:
             return
         self.speed_counter.count += 1
-        if (self.speed_counter.count / int(fps_over_min)) % GameSettings.speedIncrementCount == 0:
+        if (self.speed_counter.count / int(fps_over_min)) % GameSettings.speed_increment_count == 0:
             self.current_speed += 1
 
     def increase_y_axis(self, val: int):
@@ -134,7 +134,14 @@ class Player(pygame.sprite.Sprite):
         self.progress_to_move -= 1
         return True
 
+    def is_colliding_with_obstacles(self, obstacles: list) -> bool:
+        for hitbox in self.hitboxes:
+            if hitbox.orientation == self.orientation:
+                if len(pygame.sprite.spritecollide(hitbox, obstacles, False)) > 0:
+                    return True
+        return False
+
     def prepare_new_game(self):
         self.reset_speed()
         self.score.reset_score()
-        self.game.reset()
+        self.game_settings.reset()

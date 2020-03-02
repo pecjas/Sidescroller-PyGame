@@ -1,7 +1,7 @@
 import random
 import pygame
+from side_scroller.game import Game
 from side_scroller.settings import GameSettings
-from side_scroller.player import Player
 from side_scroller.constants import OBSTACLE_PATH
 
 class Obstacle(pygame.sprite.Sprite):
@@ -24,24 +24,24 @@ class Obstacle(pygame.sprite.Sprite):
             self.y = y
         self.rect = pygame.Rect(x + self.width, self.y, self.width, self.height)
 
-def move_obstacles(screen, obstacles: list, player: Player):
+def move_obstacles(game: Game):
     """ Move obstacles and refresh background for past obstacle positions. """
-    #Clear current obstalce locations to refresh background
-    for obstacle in obstacles:
-        screen.blit(
+    #Clear current obstacle locations to refresh background
+    for obstacle in game.obstacles:
+        game.screen.blit(
             GameSettings.background.image,
             (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y),
             (obstacle.rect.x + int(obstacle.width/2), obstacle.rect.y, int(obstacle.width/2), obstacle.height))
 
     #Blit obstacles at new position
     removed_obstacles = []
-    for obstacle in obstacles:
-        x_shift = int(player.game.obstacleSpeed + player.score.level + obstacle.speed)
+    for obstacle in game.obstacles:
+        x_shift = int(game.player.game_settings.obstacle_speed + game.player.score.level + obstacle.speed)
         obstacle.x -= x_shift
         obstacle.rect.move_ip(-(x_shift), 0)
         if obstacle.x < -obstacle.width:
             removed_obstacles.append(obstacle)
         else:
-            screen.blit(obstacle.image, (obstacle.x, obstacle.y))
+            game.screen.blit(obstacle.image, (obstacle.x, obstacle.y))
     for obstacle in removed_obstacles:
-        obstacles.remove(obstacle)
+        game.obstacles.remove(obstacle)

@@ -20,8 +20,13 @@ class Score:
         #TODO: Determine if this can replace adjust_high_score
         if self.score > self.get_high_score():
             self.set_high_score(self.score, True)
+
         self.score = 0
         self.level = 1
+
+        self.countToObstacleTick = 0
+        self.countToLevelTick = 0
+        self.countToFrequencyTick = 0
 
     def set_high_score(self, score: int, save: bool = False):
         """
@@ -40,7 +45,7 @@ class Score:
                 raise Exception("Failed to save highscore to file.")
         return updated
 
-    def load_high_score(self):
+    def load_high_score(self, score_path: str):
         """
         Attempts to load highscore from file.
 
@@ -48,8 +53,13 @@ class Score:
         from file in same directory.
         """
         try:
-            score_file = open(f'{SCORE_PATH}highscore.txt')
-            self.set_high_score(json.load(score_file))
+            score_file = open(f'{score_path}highscore.txt')
+            high_score = json.load(score_file)
+            self.set_high_score(high_score.get('score'))
             score_file.close()
         except:
+            score_file.close()
             self.high_score = {}
+
+    def increase_score(self, adjustment: int):
+        self.score += adjustment
