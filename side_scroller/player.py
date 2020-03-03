@@ -144,4 +144,4 @@ class Player(pygame.sprite.Sprite):
     def prepare_new_game(self):
         self.reset_speed()
         self.score.reset_score()
-        self.game_settings.reset()
+        self.game_settings.set_defaults()

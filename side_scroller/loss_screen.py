@@ -6,10 +6,9 @@ from side_scroller.score import Score
 
 class LossScreen():
 
-    loss_text = Fonts.loss_font.render("Game Over", True, WHITE)
-    retry_text = Fonts.retry_font.render("Press Enter to try again.", True, WHITE)
-
     def __init__(self, player: Player):
+        self.loss_text = Fonts.loss_font.render("Game Over", True, WHITE)
+        self.retry_text = Fonts.retry_font.render("Press Enter to try again.", True, WHITE)
         self.high_score_text = Fonts.high_score_font.render(
             f"High Score: {int(Score.high_score.get('score'))}",
             True,

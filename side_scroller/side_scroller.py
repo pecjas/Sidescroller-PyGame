@@ -57,11 +57,6 @@ def respond_to_key_press(game: Game):
         return neutral_key_state(game)
 
 def tick_adjustments(game: Game):
-    """
-    Updates to score and game based on current tick.
-
-    RETURN: Updated fps
-    """
     game.increase_count_to_obstacle_tick()
     game.increase_count_to_level_tick()
 
@@ -119,7 +114,6 @@ def if_necessary_quit_game():
             quit_game()
 
 def quit_game():
-    """ Exit game. Executed when 'x' is clicked. """
     pygame.display.quit()
     pygame.quit()
     sys.exit()
