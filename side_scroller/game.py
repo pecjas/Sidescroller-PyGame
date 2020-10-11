@@ -33,7 +33,11 @@ class Game():
 
     def update_score_hud(self):
         score_text = Fonts.hud_font.render(
-            f"Score: {int(self.player.score.score)} Level: {self.player.score.level}", True, BLACK)
+            f"Score: {int(self.player.score.score)}", True, BLACK
+        )
+
+        # score_text = Fonts.hud_font.render(
+        #     f"Score: {int(self.player.score.score)} Level: {self.player.score.level}", True, BLACK)
 
         self.screen.blit(
             GameSettings.background.image,
