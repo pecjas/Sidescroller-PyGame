@@ -1,4 +1,5 @@
 import json
+import os.path
 from side_scroller.constants import SCORE_PATH
 
 class Score:
@@ -40,7 +41,7 @@ class Score:
             updated = True
         if updated is True and save is True:
             try:
-                json.dump(self.high_score, open(f'{SCORE_PATH}highscore.txt', 'w'))
+                json.dump(self.high_score, open('score/highscore.txt', 'w'))
             except:
                 raise Exception("Failed to save highscore to file.")
         return updated
@@ -52,13 +53,22 @@ class Score:
         RETURNS: highscore info as dictionary. If it's not already within game, retrieves
         from file in same directory.
         """
+        # score_path = os.path.join(os.path.dirname(os.getcwd()), SCORE_PATH, 'highscore.txt')
+        score_path = score_path + 'highscore.txt'
+
         try:
-            score_file = open(f'{score_path}highscore.txt')
+            if os.path.exists(score_path):
+                score_file = open(score_path)
+            else:
+                score_file = open(score_path, "w")
+
             high_score = json.load(score_file)
             self.set_high_score(high_score.get('score'))
             score_file.close()
-        except:
-            score_file.close()
+        except Exception as e:
+            print(e)
+            if score_file:
+                score_file.close()
             self.high_score = {}
 
     def increase_score(self, adjustment: int):
