@@ -23,6 +23,9 @@ class Game():
     def initialize_game(self):
         pygame.init()
         pygame.display.set_caption(GAME_NAME)
+        self.initialize_background()
+
+    def initialize_background(self):
         self.screen.blit(GameSettings.background.image, GameSettings.background.rect)
 
     def refresh_background(self):
@@ -44,6 +47,8 @@ class Game():
 
     def prepare_new_game(self):
         self.player.prepare_new_game()
+        self.obstacles = list()
+        self.initialize_background()
 
     def set_current_fps_over_min_fps(self):
         self.fps_over_min = self.game_fps / GameSettings.minFps
