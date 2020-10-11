@@ -31,7 +31,7 @@ class GameSettings:
     background = Background("background.jpg")
     lossScreen = Background("loss_screen.png")
     allTimeScore = Score()
-    allTimeScore.load_high_score("test/score/")
+    allTimeScore.load_high_score("score/")
 
     hoverLimit = 20
     maxSpeed = 3
