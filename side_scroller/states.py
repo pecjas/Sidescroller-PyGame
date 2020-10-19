@@ -3,6 +3,9 @@ from side_scroller.game import Game
 from side_scroller.settings import GameSettings
 from side_scroller.player import Player, DIRECTIONS
 
+def should_pause_game(keys: list) -> bool:
+    return keys[pygame.K_ESCAPE]
+
 def is_player_moving_up(keys: list) -> bool:
     return keys[pygame.K_UP]
 

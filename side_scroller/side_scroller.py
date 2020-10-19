@@ -6,8 +6,10 @@ from side_scroller.game import Game
 from side_scroller.obstacle import Obstacle, move_obstacles
 from side_scroller.settings import GameSettings
 from side_scroller.loss_screen import LossScreen
+from side_scroller.pause_screen import PauseScreen
 from side_scroller.states import (up_key_state, neutral_key_state, down_key_state,
-                                  is_player_moving_up, is_player_moving_down)
+                                  is_player_moving_up, is_player_moving_down,
+                                  should_pause_game)
 
 def change_to_file_directory():
     absolute_path = os.path.abspath(__file__)
@@ -49,12 +51,22 @@ def main_game_loop(current_game: Game):
 
 def respond_to_key_press(game: Game):
     keys = pygame.key.get_pressed()
+    neutral_count = None
+
     if is_player_moving_up(keys):
-        return up_key_state(game)
+        neutral_count = up_key_state(game)
     elif is_player_moving_down(keys, game):
-        return down_key_state(game)
+        neutral_count = down_key_state(game)
     else:
-        return neutral_key_state(game)
+        neutral_count = neutral_key_state(game)
+
+    if should_pause_game(keys):
+        pause_screen = PauseScreen()
+        pause_screen.display(game.screen)
+        wait_for_return_key_press()
+        pause_screen.undisplay(game.screen)
+
+    return neutral_count
 
 def tick_adjustments(game: Game):
     game.increase_count_to_obstacle_tick()

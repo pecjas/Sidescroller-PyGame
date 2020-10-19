@@ -20,6 +20,7 @@ class Fonts():
     retry_font = pygame.font.SysFont("Ariel", 30)
     high_score_font = pygame.font.SysFont("Ariel", 50)
     score_font = pygame.font.SysFont("Ariel", 50)
+    pause_font = pygame.font.SysFont("Ariel", 50)
 
 class GameSettings:
     """
