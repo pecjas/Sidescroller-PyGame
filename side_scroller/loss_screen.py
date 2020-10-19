@@ -19,7 +19,7 @@ class LossScreen():
             True,
             WHITE)
 
-    def display(self, screen: pygame.display):
+    def display(self, screen: pygame.surface):
         screen.blit(GameSettings.lossScreen.image, GameSettings.lossScreen.rect)
         screen.blit(self.loss_text,
                     self.loss_text.get_rect(
