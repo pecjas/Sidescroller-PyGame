@@ -48,6 +48,8 @@ def main_game_loop(current_game: Game):
 
         end_state = current_game.player.is_colliding_with_obstacles(current_game.obstacles)
         current_game.tick_game_fps_clock()
+    
+    display_player_death_animation(current_game)
 
 def respond_to_key_press(game: Game):
     keys = pygame.key.get_pressed()
@@ -129,6 +131,47 @@ def quit_game():
     pygame.display.quit()
     pygame.quit()
     sys.exit()
+
+def display_player_death_animation(current_game: Game):
+    #TODO: Handle acceleration with FPS instead for smoother transition
+    #TODO: Handle displaying obstacles
+    move_speed = 2
+    acceleration_count = 50
+    count = 0
+
+    # Move player up slightly
+    for _ in range(1, 20):
+        current_game.refresh_background()
+
+        current_game.player.decrease_y_axis(move_speed, False)
+        current_game.screen.blit(
+            current_game.player.neutral,
+            (current_game.player.x, current_game.player.y)
+        )
+        # up_key_state(current_game)
+
+        pygame.display.update()
+        current_game.tick_game_fps_clock()
+
+    # Drop player down off screen
+    while current_game.player.y < current_game.player.y_bottom_barrier :
+        current_game.refresh_background()
+
+        current_game.player.increase_y_axis(move_speed, False)
+        current_game.screen.blit(
+            current_game.player.down,
+            (current_game.player.x, current_game.player.y)
+        )
+        # down_key_state(current_game)
+
+        pygame.display.update()
+        current_game.tick_game_fps_clock()
+
+        count += 1
+        if count % acceleration_count == 0:
+            print("COUNT: ", count)
+            move_speed += 1
+            count = 0
 
 if __name__ == "__main__":
     change_to_file_directory()

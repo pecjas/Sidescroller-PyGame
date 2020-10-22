@@ -92,9 +92,9 @@ class Player(pygame.sprite.Sprite):
         if (self.speed_counter.count / int(fps_over_min)) % GameSettings.speed_increment_count == 0:
             self.current_speed += 1
 
-    def increase_y_axis(self, val: int):
+    def increase_y_axis(self, val: int, respect_game_barriers: bool = True):
         """ Move player down. Includes handling to avoid leaving screen. """
-        if self.y + val > self.y_bottom_barrier:
+        if respect_game_barriers and (self.y + val > self.y_bottom_barrier):
             y_adjust = self.y_bottom_barrier - self.y
             self.y = self.y_bottom_barrier
         else:
@@ -104,9 +104,9 @@ class Player(pygame.sprite.Sprite):
         for hitbox in self.hitboxes:
             hitbox.rect.move_ip(0, y_adjust)
 
-    def decrease_y_axis(self, val: int):
+    def decrease_y_axis(self, val: int, respect_game_barriers: bool = True):
         """ Move player up. Includes handling to avoid leaving screen. """
-        if self.y - val < 0:
+        if respect_game_barriers and (self.y - val < 0):
             y_adjust = self.y
             self.y = 0
         else:
