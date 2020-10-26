@@ -1,7 +1,7 @@
 import pygame
 from side_scroller.constants import BLACK
 from side_scroller.settings import GameSettings, Fonts
-from side_scroller.player import Player
+from side_scroller.player import Player, Hitbox
 from side_scroller.constants import GAME_NAME
 
 class Game():
@@ -28,16 +28,13 @@ class Game():
     def initialize_background(self):
         self.screen.blit(GameSettings.background.image, GameSettings.background.rect)
 
-    def refresh_background(self):
+    def refresh_player_location_background(self):
         self.screen.blit(GameSettings.background.image, self.player.rect, self.player.rect)
 
     def update_score_hud(self):
         score_text = Fonts.hud_font.render(
             f"Score: {int(self.player.score.score)}", True, BLACK
         )
-
-        # score_text = Fonts.hud_font.render(
-        #     f"Score: {int(self.player.score.score)} Level: {self.player.score.level}", True, BLACK)
 
         self.screen.blit(
             GameSettings.background.image,
@@ -53,6 +50,7 @@ class Game():
         self.player.prepare_new_game()
         self.obstacles = list()
         self.initialize_background()
+        self.neutral_count = 0
 
     def set_current_fps_over_min_fps(self):
         self.fps_over_min = self.game_fps / GameSettings.minFps
@@ -71,3 +69,19 @@ class Game():
 
     def tick_game_fps_clock(self):
         self.fps_clock.tick(self.game_fps)
+    
+    def get_obstacles_in_player_path_y(self) -> list:
+        """
+        Returns a list of obstacles that could be hit if the player moved along y axis.
+        """
+        player_path_y = Hitbox(
+            pygame.Rect(
+                0,
+                0,
+                self.player.width,
+                10000
+            ),
+            "neutral"
+        )
+
+        return pygame.sprite.spritecollide(player_path_y, self.obstacles, False)

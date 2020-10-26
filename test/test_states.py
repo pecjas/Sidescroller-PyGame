@@ -2,7 +2,7 @@ import unittest
 import pygame
 from side_scroller.game import Game
 from side_scroller.player import Player, DIRECTIONS
-from side_scroller.states import (is_player_moving_up, is_player_moving_down, up_key_state,
+from side_scroller.states import (should_player_move_up, should_player_move_down, up_key_state,
                                   down_key_state, neutral_key_state)
 
 def close_display_window():
@@ -22,19 +22,19 @@ class StatesTest(unittest.TestCase):
     def tearDown(self):
         close_display_window()
 
-    def test_is_player_moving_up(self):
+    def test_should_player_move_up(self):
         keys = pygame.key.get_pressed()
-        self.assertFalse(is_player_moving_up(keys))
+        self.assertFalse(should_player_move_up(keys))
 
         keys = mock_key_press(pygame.K_UP)
-        self.assertTrue(is_player_moving_up(keys))
+        self.assertTrue(should_player_move_up(keys))
 
-    def test_is_player_moving_down(self):
+    def test_should_player_move_down(self):
         keys = pygame.key.get_pressed()
-        self.assertFalse(is_player_moving_down(keys, self.game))
+        self.assertFalse(should_player_move_down(keys, self.game))
 
         keys = mock_key_press(pygame.K_DOWN)
-        self.assertTrue(is_player_moving_down(keys, self.game))
+        self.assertTrue(should_player_move_down(keys, self.game))
 
     def test_up_key_state_return(self):
         open_game = Game()
