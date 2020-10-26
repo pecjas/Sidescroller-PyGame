@@ -30,9 +30,15 @@ class GameSettings:
     height = 600
     width = 800
     background = Background("background.jpg")
-    lossScreen = Background("loss_screen.png")
     allTimeScore = Score()
     allTimeScore.load_high_score("score/")
+
+    #region Loss screen
+    loss_screen = {
+        "horizontal_bar_height": 20,
+        "vertical_bar_width": 15
+    }
+    #endregion
 
     #region Movement
     hoverLimit = 20

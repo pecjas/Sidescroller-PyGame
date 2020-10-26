@@ -8,7 +8,8 @@ class Game():
 
     def __init__(self):
         self.player = Player(0, Player.y_bottom_barrier)
-        self.screen = pygame.display.set_mode((GameSettings.width, GameSettings.height))
+        #TODO: FULLSCREEN locks player in game window
+        self.screen = pygame.display.set_mode((GameSettings.width, GameSettings.height))#, pygame.FULLSCREEN) #TODO: Should we force fullscreen or handle resizing?
 
         self.game_fps = GameSettings.minFps
         self.fps_clock = pygame.time.Clock()
