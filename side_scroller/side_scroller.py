@@ -7,8 +7,9 @@ from side_scroller.obstacle import Obstacle, move_obstacles
 from side_scroller.settings import GameSettings
 from side_scroller.loss_screen import LossScreen
 from side_scroller.pause_screen import PauseScreen
+from side_scroller.death_animation import display_player_death_animation
 from side_scroller.states import (up_key_state, neutral_key_state, down_key_state,
-                                  is_player_moving_up, is_player_moving_down,
+                                  should_player_move_up, should_player_move_down,
                                   should_pause_game)
 
 def change_to_file_directory():
@@ -35,7 +36,7 @@ def main_game_loop(current_game: Game):
         current_game.set_per_loop_adjustment()
         current_game.player.score.increase_score(current_game.per_loop_adjustment)
 
-        current_game.refresh_background()
+        current_game.refresh_player_location_background()
         current_game.update_score_hud()
 
         current_game.neutral_count = respond_to_key_press(current_game)
@@ -55,9 +56,9 @@ def respond_to_key_press(game: Game):
     keys = pygame.key.get_pressed()
     neutral_count = None
 
-    if is_player_moving_up(keys):
+    if should_player_move_up(keys):
         neutral_count = up_key_state(game)
-    elif is_player_moving_down(keys, game):
+    elif should_player_move_down(keys, game):
         neutral_count = down_key_state(game)
     else:
         neutral_count = neutral_key_state(game)
@@ -131,47 +132,6 @@ def quit_game():
     pygame.display.quit()
     pygame.quit()
     sys.exit()
-
-def display_player_death_animation(current_game: Game):
-    #TODO: Handle acceleration with FPS instead for smoother transition
-    #TODO: Handle displaying obstacles
-    move_speed = 2
-    acceleration_count = 50
-    count = 0
-
-    # Move player up slightly
-    for _ in range(1, 20):
-        current_game.refresh_background()
-
-        current_game.player.decrease_y_axis(move_speed, False)
-        current_game.screen.blit(
-            current_game.player.neutral,
-            (current_game.player.x, current_game.player.y)
-        )
-        # up_key_state(current_game)
-
-        pygame.display.update()
-        current_game.tick_game_fps_clock()
-
-    # Drop player down off screen
-    while current_game.player.y < current_game.player.y_bottom_barrier :
-        current_game.refresh_background()
-
-        current_game.player.increase_y_axis(move_speed, False)
-        current_game.screen.blit(
-            current_game.player.down,
-            (current_game.player.x, current_game.player.y)
-        )
-        # down_key_state(current_game)
-
-        pygame.display.update()
-        current_game.tick_game_fps_clock()
-
-        count += 1
-        if count % acceleration_count == 0:
-            print("COUNT: ", count)
-            move_speed += 1
-            count = 0
 
 if __name__ == "__main__":
     change_to_file_directory()

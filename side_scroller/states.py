@@ -6,7 +6,7 @@ from side_scroller.player import Player, DIRECTIONS
 def should_pause_game(keys: list) -> bool:
     return keys[pygame.K_ESCAPE]
 
-def is_player_moving_up(keys: list) -> bool:
+def should_player_move_up(keys: list) -> bool:
     return keys[pygame.K_UP]
 
 def up_key_state(game: Game):
@@ -22,7 +22,7 @@ def up_key_state(game: Game):
     game.screen.blit(player.up, (player.x, player.y))
     return 0
 
-def is_player_moving_down(keys: list, game: Game) -> bool:
+def should_player_move_down(keys: list, game: Game) -> bool:
     return keys[pygame.K_DOWN] or game.is_hover_limit_reached()
 
 def down_key_state(game: Game):
@@ -45,15 +45,19 @@ def neutral_key_state(game: Game):
     """ Logic to execute when no relevant key is pressed. Returns updated neutral_count """
     player = game.player
     previous_orientation = player.orientation
-    if player.get_direction() == DIRECTIONS.get(1):
+
+    if player.is_moving_up():
         player.reset_speed()
         player.orientation = DIRECTIONS.get(0)
         game.screen.blit(player.neutral, (player.x, player.y))
-    elif player.rect.bottom < GameSettings.height:
+
+    elif player.is_moving_down() and player.is_above_bottom_barrier(): #Player can and is moving down
         if player.can_move(player.get_current_speed(), previous_orientation):
             player.increase_y_axis(player.get_current_speed() + int(player.get_level_speed_boost()))
         player.orientation = DIRECTIONS.get(2)
         game.screen.blit(player.down, (player.x, player.y))
-    else:
+
+    else: #Player is hovering
         game.screen.blit(player.neutral, (player.x, player.y))
+
     return game.neutral_count + game.fps_over_min

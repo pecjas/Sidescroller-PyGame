@@ -1,18 +1,29 @@
+import random
 import pygame
 from side_scroller.score import Score
 from side_scroller.settings import GameSettings
 from side_scroller.constants import PLAYER_PATH
 
 DIRECTIONS = {
-    0: 'Neutral',
-    1: 'Up',
-    2: 'Down'}
+    0: 'neutral',
+    1: 'up',
+    2: 'down'}
 
 class SpeedCounter:
     """ Tracks direction and distance traveled. Used to determine object speed. """
     def __init__(self, direction):
         self.count = 0
         self.direction = DIRECTIONS.get(direction)
+    
+    def reset_all(self):
+        self.reset_count()
+        self.reset_direction()
+
+    def reset_count(self):
+        self.count = 0
+    
+    def reset_direction(self):
+        self.direction = DIRECTIONS.get(0)
 
 class Hitbox(pygame.sprite.Sprite):
     def __init__(self, rect: pygame.Rect, orientation):
@@ -73,7 +84,7 @@ class Player(pygame.sprite.Sprite):
         return self.speed_counter.direction
 
     def reset_speed(self):
-        self.speed_counter.count = 0
+        self.speed_counter.reset_count()
         self.current_speed = GameSettings.minSpeed
         self.level_speed_boost = 0
         self.progress_to_move = 0
@@ -143,5 +154,29 @@ class Player(pygame.sprite.Sprite):
 
     def prepare_new_game(self):
         self.reset_speed()
+        self.speed_counter.reset_all()
         self.score.reset_score()
         self.game_settings.set_defaults()
+        self.orientation = DIRECTIONS.get(0)
+        self.set_random_start_position_y()
+
+    def set_random_start_position_y(self):
+        #BUG: doesn't move hitboxes
+        quarter_window = GameSettings.height / 4
+        move_range = random.randrange(-quarter_window, quarter_window)
+        
+        destination_y = (quarter_window * 2 + move_range)
+        if destination_y > self.y:
+            self.increase_y_axis(destination_y - self.y)
+        else:
+            self.decrease_y_axis(self.y - destination_y)
+
+    def is_moving_down(self):
+        return self.get_direction() == DIRECTIONS.get(2)
+
+    def is_moving_up(self):
+        return self.get_direction() == DIRECTIONS.get(1)
+
+    def is_above_bottom_barrier(self):
+        return self.rect.bottom < GameSettings.height
+

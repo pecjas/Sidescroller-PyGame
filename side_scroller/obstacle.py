@@ -43,5 +43,6 @@ def move_obstacles(game: Game):
             removed_obstacles.append(obstacle)
         else:
             game.screen.blit(obstacle.image, (obstacle.x, obstacle.y))
+    
     for obstacle in removed_obstacles:
         game.obstacles.remove(obstacle)
