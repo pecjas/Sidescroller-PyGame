@@ -56,6 +56,9 @@ class GameSettings:
     #endregion
 
     #region Player death animation
+    death_white_frequency = 10 #Adjust frequency of white blink. Lower for quicker blinks
+    death_white_duration = 40 #How long player blinks white on death
+
     death_raise_speed = 2 #Speed of brief player rise on death
     death_raise_duration = 20 #How long to raise player before falling off screen
 

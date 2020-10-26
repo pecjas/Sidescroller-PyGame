@@ -1,4 +1,8 @@
+from __future__ import annotations
 import random
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from side_scroller.game import Game
 import pygame
 from side_scroller.score import Score
 from side_scroller.settings import GameSettings
@@ -34,6 +38,10 @@ class Player(pygame.sprite.Sprite):
     up = pygame.image.load(f"{PLAYER_PATH}up_state.png")
     neutral = pygame.image.load(f"{PLAYER_PATH}neutral_state.png")
     down = pygame.image.load(f"{PLAYER_PATH}down_state.png")
+
+    up_white = pygame.image.load(f"{PLAYER_PATH}up_state_white.png")
+    neutral_white = pygame.image.load(f"{PLAYER_PATH}neutral_state_white.png")
+    down_white = pygame.image.load(f"{PLAYER_PATH}down_state_white.png")
 
     width = max(up.get_width(), neutral.get_width(), down.get_width())
     height = max(up.get_height(), neutral.get_height(), down.get_height())
@@ -180,3 +188,30 @@ class Player(pygame.sprite.Sprite):
     def is_above_bottom_barrier(self):
         return self.rect.bottom < GameSettings.height
 
+    def blink_white(self, game: Game):
+        direction = self.orientation
+        count = 0
+        image = f"{direction}_white"
+        
+        for _ in range(1, GameSettings.death_white_duration):
+            count += 1
+
+            game.screen.blit(
+                getattr(self, image),
+                (game.player.x, game.player.y)
+            )
+
+            pygame.display.update()
+            game.tick_game_fps_clock()
+
+            if count % GameSettings.death_white_frequency == 0:
+                image = Player._get_inverse_image(image)
+    
+    @classmethod
+    def _get_inverse_image(cls, current_image: str):
+        search_val = "_white"
+        if "_white" in current_image:
+            return current_image[:-len(search_val)]
+        
+        else:
+            return f"{current_image}{search_val}"

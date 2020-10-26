@@ -8,6 +8,7 @@ from side_scroller.settings import GameSettings
 def display_player_death_animation(current_game: Game):
     obstacles_in_player_path_y = [(obstacle.image, obstacle.rect) for obstacle in current_game.get_obstacles_in_player_path_y()]
 
+    current_game.player.blink_white(current_game)
     _move_player_up(current_game, obstacles_in_player_path_y)
     _drop_player_off_screen(current_game, obstacles_in_player_path_y)
 
